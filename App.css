@@ -1,0 +1,197 @@
+/* App Container */
+.container {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+  text-align: center;
+  background-color: #f7f7f7;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Title */
+.title {
+  font-size: 36px;
+  font-weight: bold;
+  margin-bottom: 30px;
+  color: #1a5276; /* Dark blue color */
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Dropzone */
+.dropzone {
+  border: 2px dashed #1a5276; /* Dark blue color */
+  padding: 20px;
+  background-color: #f9f9f9;
+  cursor: pointer;
+}
+
+.dropzone p {
+  font-size: 18px;
+  color: #666;
+  margin: 0;
+}
+
+/* Highlight Uploaded File Name */
+.file-info {
+  font-size: 18px;
+  color: #666;
+  margin-top: 10px;
+  background-color: #e1f0ff; /* Light blue color */
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+/* Chart Container */
+.chart-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+/* Chart Window */
+.window {
+  width: 400px;
+  height: 300px;
+  margin: 20px;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  background-color: #fff;
+}
+
+/* Chart Window Title */
+.window h2 {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+/* Sliding Arrow Buttons */
+.slick-slider {
+  position: relative;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  user-select: none;
+  touch-action: pan-y;
+  margin: 0;
+}
+
+.slick-list {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  transition: height 500ms ease 0s;
+}
+
+.slick-slider .slick-slide {
+  float: left;
+  height: 100%;
+  min-height: 1px;
+  display: none;
+}
+
+.slick-slider .slick-slide > div {
+  height: 100%;
+}
+
+.slick-slider .slick-slide.slick-active {
+  display: block;
+}
+
+.slick-prev,
+.slick-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a5276; /* Dark blue color */
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0.8;
+  z-index: 1;
+}
+
+.slick-prev:hover,
+.slick-next:hover {
+  opacity: 1;
+}
+
+.slick-prev:before,
+.slick-next:before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  display: inline-block;
+  transform: rotate(45deg);
+}
+
+.slick-prev {
+  left: 10px;
+}
+
+.slick-next {
+  right: 10px;
+}
+
+/* ... (Existing styles) ... */
+
+/* Chart Window Title */
+.window h2 {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #333;
+  border-bottom: 2px solid #1a5276; /* Dark blue color */
+  padding-bottom: 5px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Line Chart */
+.window[data-charttype='line'] {
+  border: 2px solid #1a5276; /* Dark blue color */
+}
+
+/* Scatter Plot */
+.window[data-charttype='scatter'] {
+  border: 2px solid #2980b9; /* Blue color */
+}
+
+/* Bar Chart */
+.window[data-charttype='bar'] {
+  border: 2px solid #27ae60; /* Green color */
+}
+
+/* Box Plot */
+.window[data-charttype='box'] {
+  border: 2px solid #e67e22; /* Orange color */
+}
+
+/* Whisker Plot */
+.window[data-charttype='whisker'] {
+  border: 2px solid #d35400; /* Dark orange color */
+}
+
+/* Bubble Chart */
+.window[data-charttype='bubble'] {
+  border: 2px solid #8e44ad; /* Purple color */
+}
+
+/* 3D Surface Plot */
+.window[data-charttype='surface'] {
+  border: 2px solid #9b59b6; /* Dark purple color */
+}
+
+/* ... (Existing styles) ... */
