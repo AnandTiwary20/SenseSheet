@@ -1,0 +1,396 @@
+/* Dashboard Layout */
+.dashboard {
+  min-height: 100vh;
+  min-width: 320px; /* Prevent content from becoming too narrow */
+  background-color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden; /* Prevent horizontal scrollbar */
+  position: relative;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.dashboard-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Allows content to scroll */
+}
+
+/* Header Styles */
+.dashboard-header {
+  background: linear-gradient(135deg, #6b46c1 0%, #805ad5 100%);
+  color: white;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  position: relative;
+  z-index: 100;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dashboard-header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: white;
+}
+
+.welcome-message {
+  margin: 0.5rem 0 0;
+  opacity: 0.9;
+  font-size: 1rem;
+}
+
+/* Main Content */
+.dashboard-main {
+  flex: 1;
+  padding: 1.5rem;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  
+  /* Add smooth transitions for responsive adjustments */
+  transition: padding 0.3s ease;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2.5rem;
+  width: 100%;
+  
+  /* Prevent grid blowout on small screens */
+  grid-auto-rows: minmax(200px, auto);
+  
+  /* Fallback for older browsers */
+  display: -ms-grid;
+  -ms-grid-columns: (minmax(280px, 1fr))[auto-fill];
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(124, 58, 237, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  color: #7c3aed;
+  font-size: 1.5rem;
+}
+
+.dashboard-card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.dashboard-card p {
+  margin: 0 0 1.5rem;
+  color: #64748b;
+  line-height: 1.5;
+  flex-grow: 1;
+}
+
+/* Recent Activity */
+.recent-activity {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.recent-activity h2 {
+  margin: 0 0 1.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  font-size: 1.25rem;
+  margin-right: 1rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-details {
+  flex: 1;
+}
+
+.activity-details p {
+  margin: 0 0 0.25rem;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.activity-time {
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+  gap: 0.5rem;
+}
+
+.btn-primary {
+  background-color: #7c3aed;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #6d28d9;
+  transform: translateY(-1px);
+}
+
+.btn-logout {
+  background-color: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-logout:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Responsive Design */
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .dashboard-main {
+    padding: 1.5rem;
+  }
+  
+  .dashboard-grid {
+    gap: 1.25rem;
+  }
+}
+
+@media (max-width: 992px) {
+  .dashboard-header {
+    padding: 1.25rem 1.5rem;
+  }
+  
+  .dashboard-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .welcome-message {
+    font-size: 0.95rem;
+  }
+  
+  .card-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.25rem;
+  }
+}
+
+/* Footer Styles */
+.dashboard-footer {
+  flex-shrink: 0;
+  background-color: #4a5568; /* Dark grey background */
+  padding: 1.25rem 1rem;
+  text-align: center;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  color: white;
+  font-size: 0.95rem;
+}
+
+.dashboard-footer p {
+  margin: 0;
+  color: white;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+}
+
+.dashboard-footer p::selection {
+  background-color: #d133b9;
+  color: white;
+}
+
+/* Main content */
+.dashboard-main {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto; /* Enable scrolling for main content */
+}
+
+@media (max-width: 768px) {
+  .dashboard-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    text-align: left;
+  }
+  
+  .dashboard-main {
+    padding: 1.25rem 1rem;
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .dashboard-card {
+    padding: 1.25rem;
+    margin: 0;
+  }
+  
+  .dashboard-card h3 {
+    font-size: 1.1rem;
+  }
+  
+  .activity-item {
+    padding: 0.6rem 0;
+  }
+  
+  .activity-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-header {
+    padding: 1rem 1.25rem;
+  }
+  
+  .dashboard-header h1 {
+    font-size: 1.35rem;
+  }
+  
+  .dashboard-main {
+    padding: 1rem 0.75rem;
+  }
+  
+  .dashboard-card {
+    padding: 1rem;
+    border-radius: 0.5rem;
+  }
+  
+  .card-icon {
+    width: 42px;
+    height: 42px;
+    margin-bottom: 1rem;
+  }
+  
+  .btn {
+    padding: 0.4rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .dashboard {
+    background-color: #0f172a;
+  }
+  
+  .dashboard-card,
+  .recent-activity {
+    background-color: #1e293b;
+    color: #e2e8f0;
+  }
+  
+  .dashboard-card h3,
+  .recent-activity h2,
+  .activity-details p {
+    color: #f8fafc;
+  }
+  
+  .dashboard-card p {
+    color: #94a3b8;
+  }
+  
+  .activity-icon {
+    background-color: #334155;
+  }
+  
+  .activity-item {
+    border-bottom-color: #334155;
+  }
+  
+  .card-icon {
+    background: rgba(124, 58, 237, 0.2);
+    color: #a78bfa;
+  }
+}

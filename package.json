@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "mongodb": "^6.17.0",
+    "sequelize": "^6.37.7",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "stylelint": "^16.21.1"
+  }
+}

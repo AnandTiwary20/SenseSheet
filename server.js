@@ -1,0 +1,187 @@
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
+const path = require('path');
+const { Sequelize, DataTypes } = require('sequelize');
+
+const app = express();
+
+// Middleware
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
+app.use(bodyParser.json());
+
+// Database Configuration
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: path.join(__dirname, 'database.sqlite'),
+  logging: false
+});
+
+// Test the database connection
+async function testConnection() {
+  try {
+    await sequelize.authenticate();
+    console.log('✅ Database connection has been established successfully.');
+    
+    // Sync all models
+    await sequelize.sync({ force: true }); // This will drop and recreate tables
+    console.log('✅ Database synchronized');
+    
+    // Create test user
+    await createTestUser();
+  } catch (error) {
+    console.error('❌ Unable to connect to the database:', error);
+  }
+}
+
+testConnection();
+
+// Import models
+const User = require('./models/User');
+
+// JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_development';
+
+// Create test user if not exists
+async function createTestUser() {
+  try {
+    const testEmail = 'test@example.com';
+    const testPassword = 'password123';
+    
+    // Check if test user already exists
+    const existingUser = await User.findOne({ where: { email: testEmail } });
+    
+    if (!existingUser) {
+      await User.create({
+        name: 'Test User',
+        email: testEmail,
+        password: testPassword // The hook will hash this
+      });
+      console.log('✅ Test user created:', testEmail, 'with password:', testPassword);
+    } else {
+      console.log('ℹ️ Test user already exists');
+    }
+  } catch (error) {
+    console.error('❌ Error creating test user:', error);
+  }
+}
+
+// Auth Routes
+// Register
+app.post('/api/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    
+    // Check if user already exists
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already in use' });
+    }
+    
+    // Create new user
+    const user = await User.create({ name, email, password });
+    
+    // Generate auth token
+    const token = jwt.sign({ id: user.id }, JWT_SECRET, {
+      expiresIn: '7d'
+    });
+    
+    // Get user data without password
+    const userResponse = user.toJSON();
+    
+    res.status(201).json({ 
+      user: userResponse,
+      token 
+    });
+    
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(400).json({ 
+      error: error.message || 'Registration failed. Please try again.' 
+    });
+  }
+});
+
+// Login
+app.post('/api/login', async (req, res) => {
+  console.log('\n🔑 Login attempt - Start ====================');
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
+  
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      console.log('❌ Missing email or password');
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    console.log('🔍 Looking for user:', email);
+    const user = await User.findOne({ where: { email } });
+    
+    if (!user) {
+      console.log('❌ User not found:', email);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    console.log('✅ User found, checking password...');
+    const isMatch = await user.comparePassword(password);
+    
+    if (!isMatch) {
+      console.log('❌ Invalid password for user:', email);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    console.log('🔑 Password match, generating token...');
+    const token = jwt.sign({ id: user.id }, JWT_SECRET, {
+      expiresIn: '7d'
+    });
+
+    // Get user data without password
+    const userResponse = user.toJSON();
+
+    console.log('🎉 Login successful for user:', email);
+    console.log('======================================\n');
+    res.json({ 
+      user: userResponse, 
+      token 
+    });
+    
+  } catch (error) {
+    console.error('🔥 Login error:', error);
+    res.status(500).json({ 
+      error: 'An error occurred during login. Please try again.' 
+    });
+  }
+});
+
+// Protected route example
+app.get('/api/me', async (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findByPk(decoded.id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Auth error:', error);
+    res.status(401).json({ error: 'Please authenticate' });
+  }
+});
+
+// Start the server
+const port = process.env.PORT || 5000;
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
