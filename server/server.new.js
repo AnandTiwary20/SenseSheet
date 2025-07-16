@@ -1,9 +1,5 @@
 require('colors');
-
-// Load environment variables
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
-}
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 const express = require('express');
 const cors = require('cors');
@@ -69,111 +65,60 @@ app.use((req, res, next) => {
   next();
 });
 
-// Import routes and middleware
+// Import routes
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
-const { protect } = require('./middleware/auth');
 
-// API routes
-app.use('/api/users', protect, userRoutes);
+// Mount routes
+app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
-
-// Test protected route
-app.get('/api/protected', protect, (req, res) => {
-  res.status(200).json({
-    status: 'success',
-    data: {
-      user: req.user
-    }
-  });
-});
 
 // Test route
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'success',
     message: 'Server is running',
+    environment: config.nodeEnv,
     timestamp: new Date().toISOString()
   });
 });
 
-// Handle 404 - Route not found
-app.all('*', (req, res, next) => {
-  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+// Handle 404
+app.all('*', (req, res) => {
+  res.status(404).json({
+    status: 'fail',
+    message: `Can't find ${req.originalUrl} on this server!`
+  });
 });
 
 // Global error handling middleware
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  // Default values if not set
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
-  // Log error in development
   if (config.nodeEnv === 'development') {
     console.error('Error 💥', err);
-    
-    // Send detailed error in development
-    return res.status(err.statusCode).json({
+    res.status(err.statusCode).json({
       status: err.status,
       error: err,
       message: err.message,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+      stack: err.stack
     });
-  }
-
-  // Handle specific error types
-  if (err.name === 'ValidationError') {
-    // Mongoose validation error
-    const errors = Object.values(err.errors).map(el => el.message);
-    const message = `Invalid input data. ${errors.join('. ')}`;
-    return res.status(400).json({
-      status: 'fail',
-      message
-    });
-  }
-
-  if (err.name === 'JsonWebTokenError') {
-    // JWT error
-    return res.status(401).json({
-      status: 'fail',
-      message: 'Invalid token. Please log in again!'
-    });
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    // JWT expired
-    return res.status(401).json({
-      status: 'fail',
-      message: 'Your token has expired! Please log in again.'
-    });
-  }
-
-  // Handle duplicate field errors (MongoDB)
-  if (err.code === 11000) {
-    const value = err.errmsg.match(/(["'])(\?:(?=(\\?)\2)\\.|(?!\2\2)[^\\]|\\.)*?\1/)[0];
-    const message = `Duplicate field value: ${value}. Please use another value!`;
-    return res.status(400).json({
-      status: 'fail',
-      message
-    });
-  }
-
-  // Operational, trusted error: send message to client
-  if (err.isOperational) {
-    return res.status(err.statusCode).json({
+  } else if (err.isOperational) {
+    // Production error handling for operational errors
+    res.status(err.statusCode).json({
       status: err.status,
       message: err.message
     });
+  } else {
+    // Production error handling for unknown errors
+    console.error('Error 💥', err);
+    res.status(500).json({
+      status: 'error',
+      message: 'Something went wrong!'
+    });
   }
-
-  // Programming or other unknown error: don't leak error details
-  console.error('ERROR 💥', err);
-  
-  // Send generic message
-  return res.status(500).json({
-    status: 'error',
-    message: 'Something went very wrong!'
-  });
 });
 
 // Start server

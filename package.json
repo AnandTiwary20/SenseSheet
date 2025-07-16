@@ -1,6 +1,8 @@
 {
   "dependencies": {
+    "@types/uuid": "^10.0.0",
     "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
@@ -10,11 +12,13 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.17.0",
+    "morgan": "^1.10.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
     "sequelize": "^6.37.7",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
@@ -25,8 +29,8 @@
   "description": "Backend for SenseSheet - Data Visualization Tool",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "server": "nodemon server.js",
+    "start": "node -r dotenv/config server/server.js",
+    "server": "nodemon -r dotenv/config server/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

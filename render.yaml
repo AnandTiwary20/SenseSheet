@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: sensesheet-backend
+    env: node
+    build:
+      yarn: null
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        fromDatabase:
+          name: sensesheet-db
+          property: connectionString
+
+databases:
+  - name: sensesheet-db
+    databaseName: sensesheet
+    user: admin
+    plan: free
+    mongoVersion: "7.0.0"
