@@ -16,28 +16,46 @@
   display: flex;
   flex-direction: column;
   min-height: 0; /* Allows content to scroll */
+  padding-top: 1.5rem; /* Add space below the fixed header */
+  margin-top: var(--header-height, 60px); /* Match header height */
 }
 
 /* Header Styles */
+:root {
+  --header-height: 60px; /* Define header height variable */
+}
+
 .dashboard-header {
   background: linear-gradient(135deg, #6b46c1 0%, #805ad5 100%);
   color: white;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  position: relative;
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  position: fixed; /* Changed from sticky to fixed */
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
   z-index: 100;
-  width: 100%;
   box-sizing: border-box;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dashboard-header.scrolled {
+  padding: 0.5rem 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .dashboard-header-content {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
+  flex-wrap: nowrap;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
 }
 
 .dashboard-header h1 {
@@ -45,12 +63,73 @@
   font-size: 1.75rem;
   font-weight: 700;
   color: white;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.dashboard-header.scrolled h1 {
+  font-size: 1.5rem;
 }
 
 .welcome-message {
-  margin: 0.5rem 0 0;
+  margin: 0.25rem 0 0;
   opacity: 0.9;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.welcome-message::before {
+  content: '👋';
+  font-size: 1.1em;
+  animation: wave 2s infinite;
+}
+
+@keyframes wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(10deg); }
+  75% { transform: rotate(-10deg); }
+}
+
+/* Header Responsive */
+@media (max-width: 768px) {
+  .dashboard-header {
+    padding: 0.5rem 1rem;
+  }
+  
+  .dashboard-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .welcome-message {
+    font-size: 0.85rem;
+  }
+  
+  .dashboard-header-content {
+    gap: 1rem;
+    padding: 0.25rem 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-header h1 {
+    font-size: 1.3rem;
+  }
+  
+  .welcome-message {
+    font-size: 0.8rem;
+  }
+  
+  .btn-logout {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+  }
 }
 
 /* Main Content */

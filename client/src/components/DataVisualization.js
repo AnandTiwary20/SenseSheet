@@ -1,703 +1,670 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Chart, registerables } from 'chart.js';
 import { Bar, Line, Pie, Scatter } from 'react-chartjs-2';
-import './DataVisualization.css';
+import { FiDownload, FiChevronLeft } from 'react-icons/fi';
+import './DataVisualization.clean.css';
 
 // Register all Chart.js components
 Chart.register(...registerables);
 
+const COLORS = [
+  '#3b82f6', // blue-500
+  '#10b981', // emerald-500
+  '#f59e0b', // amber-500
+  '#8b5cf6', // violet-500
+  '#ec4899', // pink-500
+  '#14b8a6', // teal-500
+  '#f97316', // orange-500
+  '#6366f1', // indigo-500
+];
+
 const DataVisualization = ({ chartData, onBack, onLogout }) => {
-  const [filteredData, setFilteredData] = useState(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [chartTitle, setChartTitle] = useState('');
-  const [xAxisLabel, setXAxisLabel] = useState('');
-  const [yAxisLabel, setYAxisLabel] = useState('');
+  // State management
   const [selectedChart, setSelectedChart] = useState('bar');
-  const [xAxis, setXAxis] = useState('');
-  const [yAxis, setYAxis] = useState('');
+  const [chartTitle, setChartTitle] = useState('Data Visualization');
+  const [xAxisLabel, setXAxisLabel] = useState('Categories');
+  const [yAxisLabel, setYAxisLabel] = useState('Values');
+  const [xAxisColumn, setXAxisColumn] = useState('');
+  const [yAxisColumns, setYAxisColumns] = useState([]);
+  const [hasValidData, setHasValidData] = useState(false);
+  const [processedData, setProcessedData] = useState(null);
+  const [isSidebarOpen] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [previewData, setPreviewData] = useState([]);
+  
   const chartRef = useRef(null);
   const navigate = useNavigate();
 
-  // Handle back button click
-  const handleBack = () => {
+  // Get all column names with their types
+  const getColumnInfo = useCallback((data) => {
+    if (!data || data.length === 0) return { numeric: [], text: [] };
+    
+    const firstRow = data[0];
+    const numericCols = [];
+    const textCols = [];
+    
+    Object.keys(firstRow).forEach(key => {
+      const value = firstRow[key];
+      if (typeof value === 'number' || (typeof value === 'string' && !isNaN(parseFloat(value)))) {
+        numericCols.push(key);
+      } else {
+        textCols.push(key);
+      }
+    });
+    
+    return { numeric: numericCols, text: textCols };
+  }, []);
+
+  // Process data when component mounts or chartData changes
+  useEffect(() => {
+    const processData = () => {
+      setIsLoading(true);
+      
+      if (!chartData?.data?.length) {
+        setHasValidData(false);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Get column information
+        const { numeric: numericCols, text: textCols } = getColumnInfo(chartData.data);
+        
+        // Set default x-axis (prefer text columns, fallback to first numeric)
+        if (!xAxisColumn) {
+          const defaultX = textCols.length > 0 ? textCols[0] : numericCols[0];
+          if (defaultX) setXAxisColumn(defaultX);
+        }
+        
+        // Set default y-axis (first numeric column not used for x-axis)
+        if (yAxisColumns.length === 0 && numericCols.length > 0) {
+          const defaultY = numericCols.find(col => col !== xAxisColumn) || numericCols[0];
+          if (defaultY) setYAxisColumns([defaultY]);
+        }
+        
+        // Set preview data (first 5 rows)
+        setPreviewData(chartData.data.slice(0, 5));
+        setProcessedData(chartData.data);
+        setHasValidData(true);
+      } catch (error) {
+        console.error('Error processing data:', error);
+        setHasValidData(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    processData();
+  }, [chartData, getColumnInfo, xAxisColumn, yAxisColumns]);
+
+  // Handle going back to previous page
+  const handleBack = useCallback(() => {
     if (onBack) {
       onBack();
     } else {
-      navigate('/');
+      navigate(-1);
+    }
+  }, [navigate, onBack]);
+
+  // Handle chart download
+  const handleDownload = (type = 'png') => {
+    if (!chartRef.current) return;
+    
+    const fileName = `chart-${new Date().toISOString().slice(0, 10)}`;
+    
+    switch (type) {
+      case 'png':
+        const pngLink = document.createElement('a');
+        pngLink.download = `${fileName}.png`;
+        pngLink.href = chartRef.current.toBase64Image('image/png', 1);
+        pngLink.click();
+        break;
+        
+      case 'jpeg':
+        const jpegLink = document.createElement('a');
+        jpegLink.download = `${fileName}.jpg`;
+        jpegLink.href = chartRef.current.toBase64Image('image/jpeg', 1);
+        jpegLink.click();
+        break;
+        
+      case 'svg':
+        const svgLink = document.createElement('a');
+        svgLink.download = `${fileName}.svg`;
+        svgLink.href = `data:image/svg+xml;base64,${btoa(chartRef.current.toBase64Image('image/svg+xml', 1))}`;
+        svgLink.click();
+        break;
+        
+      case 'csv':
+        if (!processedData || !xAxisColumn) return;
+        
+        const headers = [xAxisColumn, ...yAxisColumns];
+        const csvContent = [
+          headers.join(','),
+          ...processedData.map(row => 
+            headers.map(header => 
+              `"${String(row[header] || '').replace(/"/g, '""')}"`
+            ).join(',')
+          )
+        ].join('\n');
+        
+        const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const csvUrl = URL.createObjectURL(csvBlob);
+        const csvLink = document.createElement('a');
+        csvLink.href = csvUrl;
+        csvLink.download = `${fileName}.csv`;
+        document.body.appendChild(csvLink);
+        csvLink.click();
+        document.body.removeChild(csvLink);
+        break;
+        
+      default:
+        break;
     }
   };
 
-  // Get yColumns for the current data
-  const getYColumns = () => {
-    try {
-      if (!filteredData || !Array.isArray(filteredData) || filteredData.length === 0) return [];
-      const firstRow = filteredData[0];
-      if (!firstRow || typeof firstRow !== 'object') return [];
-      return Object.keys(firstRow).filter(key => {
-        const value = firstRow[key];
-        return typeof value === 'number' || 
-               (typeof value === 'string' && !isNaN(parseFloat(value)));
-      });
-    } catch (error) {
-      console.error('Error getting Y columns:', error);
-      return [];
-    }
-  };
-
-  const yColumns = getYColumns();
-  
-  // Function to handle chart download
-  const handleDownload = () => {
-    try {
-      if (!chartRef.current) {
-        console.warn('Chart reference not available');
-        return;
-      }
-      
-      const link = document.createElement('a');
-      const chart = chartRef.current;
-      
-      if (chart && chart.toBase64Image) {
-        const url = chart.toBase64Image('image/png', 1);
-        link.href = url;
-        link.download = `chart-${new Date().toISOString().slice(0, 10)}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        console.warn('Chart export not supported');
-      }
-    } catch (error) {
-      console.error('Error exporting chart:', error);
-    }
-  };
-  
-  // Enhanced pie chart options
-  const pieChartOptions = {
+  // Enhanced chart options with dark theme
+  const chartOptions = useMemo(() => ({
     responsive: true,
-    maintainAspectRatio: false,
-    layout: {
-      padding: {
-        top: 20,
-        right: 20,
-        bottom: 40,
-        left: 20
-      }
-    },
-    plugins: {
-      legend: {
-        position: 'right',
-        labels: {
-          color: '#e0e0e0',
-          font: {
-            size: 12
-          },
-          padding: 20,
-          usePointStyle: true,
-          pointStyle: 'circle',
-          boxWidth: 8,
-          boxHeight: 8
-        }
-      },
-      title: {
-        display: true,
-        text: chartTitle || 'Pie Chart',
-        color: '#e0e0e0',
-        font: {
-          size: 16,
-          weight: 'bold'
-        },
-        padding: {
-          top: 10,
-          bottom: 20
-        }
-      },
-      tooltip: {
-        backgroundColor: 'rgba(17, 24, 39, 0.9)',
-        titleColor: '#ffffff',
-        bodyColor: '#e0e0e0',
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-        borderWidth: 1,
-        displayColors: true,
-        padding: 12,
-        callbacks: {
-          label: function(context) {
-            const label = context.label || '';
-            const value = context.raw || 0;
-            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-            const percentage = Math.round((value / total) * 100);
-            return `${label}: ${value} (${percentage}%)`;
-          }
-        }
-      },
-      datalabels: {
-        formatter: (value, ctx) => {
-          const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-          const percentage = Math.round((value / total) * 100);
-          return percentage > 5 ? `${percentage}%` : '';
-        },
-        color: '#fff',
-        font: {
-          weight: 'bold',
-          size: 12
-        }
-      }
-    },
-    elements: {
-      arc: {
-        borderWidth: 2,
-        borderColor: 'rgba(0, 0, 0, 0.5)'
-      }
-    },
-    cutout: '60%',
-    radius: '80%'
-  };
-
-  // Common chart options with dark theme
-  const commonOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    layout: {
-      padding: {
-        top: 30,
-        right: 20,
-        bottom: 30,
-        left: 20
-      }
-    },
-    aspectRatio: 2,
-    backgroundColor: '#000000',
-    color: '#e0e0e0',
-    borderColor: '#444',
+    maintainAspectRatio: true,
+    backgroundColor: 'var(--bg-light)',
+    color: '#ffffff', // White text for all chart elements
     plugins: {
       legend: {
         position: 'top',
         labels: {
-          color: '#e0e0e0',
+          color: '#ffffff', // White legend text
           font: {
-            size: 12
+            size: 13,
+            family: 'Inter, system-ui, -apple-system, sans-serif',
+            weight: '500'
           },
-          padding: 20
+          padding: 20,
+          usePointStyle: true,
+          pointStyle: 'circle'
         }
       },
       title: {
         display: true,
-        text: chartTitle || 'Data Visualization',
-        color: '#e0e0e0',
+        text: chartTitle || 'Chart Title',
+        color: '#ffffff', // White title text
         font: {
-          size: 16,
-          weight: 'bold'
+          size: 18,
+          weight: '600',
+          family: 'Inter, system-ui, -apple-system, sans-serif'
         },
         padding: {
-          top: 10,
           bottom: 20
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#ffffff',
-        bodyColor: '#e0e0e0',
-        borderColor: '#444',
-        borderWidth: 1,
-        displayColors: true,
+        backgroundColor: 'rgba(37, 46, 62, 0.95)',
+        titleColor: 'var(--text-primary)',
+        bodyColor: 'var(--text-secondary)', 
+        titleFont: {
+          size: 14,
+          weight: '600',
+          family: 'Inter, system-ui, -apple-system, sans-serif'
+        },
+        bodyFont: {
+          size: 13,
+          family: 'Inter, system-ui, -apple-system, sans-serif'
+        },
         padding: 12,
-        callbacks: {
-          label: function(context) {
-            let label = context.dataset.label || '';
-            if (label) {
-              label += ': ';
-            }
-            if (context.parsed.y !== null) {
-              label += new Intl.NumberFormat('en-US', {
-                style: 'decimal',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              }).format(context.parsed.y);
-            }
-            return label;
-          }
-        }
+        cornerRadius: 8,
+        displayColors: true,
+        usePointStyle: true,
+        borderColor: 'var(--border)',
+        borderWidth: 1,
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)'
       }
     },
     scales: {
       x: {
-        title: {
-          display: true,
-          text: xAxisLabel || 'X-Axis',
-          color: '#a0a0a0',
-          font: {
-            size: 12,
-            weight: 'bold'
-          },
-          padding: { top: 10 }
-        },
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)',
-          drawBorder: false
+          color: 'var(--chart-grid)',
+          drawBorder: false,
+          borderDash: [5, 5]
         },
         ticks: {
-          color: '#a0a0a0',
+          color: '#ffffff', // White axis ticks
           font: {
-            size: 11
+            size: 12,
+            family: 'Inter, system-ui, -apple-system, sans-serif'
           }
+        },
+        title: {
+          display: !!xAxisLabel,
+          text: xAxisLabel,
+          color: '#ffffff', // White axis title
+          font: {
+            size: 14,
+            weight: '500',
+            family: 'Inter, system-ui, -apple-system, sans-serif'
+          },
+          padding: { top: 10, bottom: 5 }
+        },
+        border: {
+          color: 'var(--border)'
         }
       },
       y: {
-        title: {
-          display: true,
-          text: yAxisLabel || 'Y-Axis',
-          color: '#a0a0a0',
-          font: {
-            size: 12,
-            weight: 'bold'
-          },
-          padding: { bottom: 10 }
-        },
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)',
-          drawBorder: false
+          color: 'var(--chart-grid)',
+          drawBorder: false,
+          borderDash: [5, 5]
         },
         ticks: {
-          color: '#a0a0a0',
+          color: '#ffffff', // White axis ticks
           font: {
-            size: 11
+            size: 12,
+            family: 'Inter, system-ui, -apple-system, sans-serif'
           },
-          callback: function(value) {
-            return new Intl.NumberFormat('en-US', {
-              notation: 'compact',
-              compactDisplay: 'short'
-            }).format(value);
-          }
+          padding: 8
+        },
+        title: {
+          display: !!yAxisLabel,
+          text: yAxisLabel,
+          color: '#ffffff', // White axis title
+          font: {
+            size: 14,
+            weight: '500',
+            family: 'Inter, system-ui, -apple-system, sans-serif'
+          },
+          padding: { bottom: 10, top: 5 }
+        },
+        border: {
+          color: 'var(--border)'
         }
       }
-    }
-  };
-
-  // Generate chart data based on the selected chart type
-  const generateChartData = () => {
-    if (!filteredData || filteredData.length === 0) return { labels: [], datasets: [] };
-    
-    // Get the first numeric column for pie chart data
-    const firstNumericColumn = filteredData[0] ? 
-      Object.keys(filteredData[0]).find(key => {
-        const value = filteredData[0][key];
-        return typeof value === 'number' || (typeof value === 'string' && !isNaN(parseFloat(value)));
-      }) : '';
-    
-    // Get labels from the first non-numeric column or use index as fallback
-    const labelColumn = filteredData[0] ? 
-      Object.keys(filteredData[0]).find(key => {
-        const value = filteredData[0][key];
-        return typeof value === 'string' && isNaN(parseFloat(value));
-      }) : null;
-    
-    const labels = labelColumn ? 
-      filteredData.map(item => String(item[labelColumn] || '')) :
-      filteredData.map((_, index) => `Item ${index + 1}`);
-    
-    const datasets = [];
-    
-    if (selectedChart === 'pie') {
-      const data = firstNumericColumn ? 
-        filteredData.map(item => {
-          const value = item[firstNumericColumn];
-          return typeof value === 'number' ? value : parseFloat(value) || 0;
-        }) :
-        filteredData.map((_, index) => index + 1); // Fallback to index-based values
-      
-      // Generate a consistent color palette
-      const backgroundColors = [
-        'rgba(99, 102, 241, 0.8)',  // indigo
-        'rgba(236, 72, 153, 0.8)',  // pink
-        'rgba(234, 179, 8, 0.8)',   // yellow
-        'rgba(16, 185, 129, 0.8)',  // emerald
-        'rgba(139, 92, 246, 0.8)',  // violet
-        'rgba(20, 184, 166, 0.8)',  // teal
-        'rgba(249, 115, 22, 0.8)',  // orange
-        'rgba(236, 72, 153, 0.8)',  // pink
-        'rgba(6, 182, 212, 0.8)',   // cyan
-        'rgba(139, 92, 246, 0.8)'   // violet
-      ];
-      
-      // Add hover effects
-      const hoverBackgroundColors = backgroundColors.map(color => 
-        color.replace('0.8', '1')
-      );
-      
-      return {
-        labels: labels,
-        datasets: [{
-          data: data,
-          backgroundColor: backgroundColors.slice(0, data.length),
-          borderColor: 'rgba(0, 0, 0, 0.3)',
-          borderWidth: 1,
-          hoverBackgroundColor: hoverBackgroundColors.slice(0, data.length),
-          hoverBorderColor: 'rgba(255, 255, 255, 0.8)',
-          hoverOffset: 10,
-          spacing: 2
-        }]
-      };
-    }
-    
-    // For other chart types
-    yColumns.forEach((column, index) => {
-      const color = `hsl(${(index * 360) / yColumns.length}, 70%, 50%)`;
-      
-      datasets.push({
-        label: column,
-        data: filteredData.map(item => item[column]),
-        backgroundColor: `rgba(${index * 50}, ${index * 100}, ${index * 150}, 0.5)`,
-        borderColor: color,
+    },
+    elements: {
+      line: {
+        tension: 0.4,
         borderWidth: 2,
-        pointBackgroundColor: color,
+        fill: false
+      },
+      point: {
+        radius: 4,
+        hoverRadius: 6,
+        borderWidth: 2,
+        hoverBorderWidth: 2,
+        backgroundColor: 'var(--primary)'
+      },
+      bar: {
+        borderRadius: 4,
+        borderSkipped: false,
+        backgroundColor: 'var(--primary)',
+        borderColor: 'var(--primary-hover)'
+      }
+    },
+    animation: {
+      duration: 1000,
+      easing: 'easeInOutQuart'
+    },
+    layout: {
+      padding: {
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: 20
+      }
+    },
+    interaction: {
+      mode: 'nearest',
+      intersect: false
+    },
+    hover: {
+      mode: 'nearest',
+      intersect: true
+    }
+  }), [chartTitle, xAxisLabel, yAxisLabel]);
+
+  // Chart data getter functions
+  const getBarChartData = useCallback(() => {
+    if (!processedData || !xAxisColumn || yAxisColumns.length === 0) return { labels: [], datasets: [] };
+    
+    return {
+      labels: processedData.map(item => String(item[xAxisColumn])),
+      datasets: yAxisColumns.map((col, index) => ({
+        label: col,
+        data: processedData.map(item => parseFloat(item[col]) || 0),
+        backgroundColor: `${COLORS[index % COLORS.length]}33`,
+        borderColor: COLORS[index % COLORS.length],
+        borderWidth: 1,
+        borderRadius: 4,
+        barThickness: 'flex',
+        maxBarThickness: 32,
+        borderSkipped: false,
+      }))
+    };
+  }, [processedData, xAxisColumn, yAxisColumns]);
+
+  const getLineChartData = useCallback(() => {
+    if (!processedData || !xAxisColumn || yAxisColumns.length === 0) return { labels: [], datasets: [] };
+    
+    return {
+      labels: processedData.map(item => String(item[xAxisColumn])),
+      datasets: yAxisColumns.map((col, index) => ({
+        label: col,
+        data: processedData.map(item => parseFloat(item[col]) || 0),
+        borderColor: COLORS[index % COLORS.length],
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointBackgroundColor: COLORS[index % COLORS.length],
         pointBorderColor: '#fff',
         pointHoverRadius: 5,
-        pointHoverBackgroundColor: color,
+        pointHoverBackgroundColor: COLORS[index % COLORS.length],
         pointHoverBorderColor: '#fff',
         pointHitRadius: 10,
         pointBorderWidth: 2,
-        fill: selectedChart === 'area',
-        tension: selectedChart === 'area' ? 0.4 : 0.1
-      });
-    });
+        tension: 0.3,
+        fill: false
+      }))
+    };
+  }, [processedData, xAxisColumn, yAxisColumns]);
+
+  const getPieChartData = useCallback(() => {
+    if (!processedData || !xAxisColumn) return { labels: [], datasets: [] };
+    
+    const labels = processedData.map(item => String(item[xAxisColumn]));
+    const data = yAxisColumns.length > 0 
+      ? processedData.map(item => parseFloat(item[yAxisColumns[0]]) || 0)
+      : processedData.map((_, i) => i + 1);
     
     return {
-      labels: labels,
-      datasets: datasets
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: labels.map((_, i) => {
+          const color = COLORS[i % COLORS.length];
+          return color + '80';
+        }),
+        borderColor: '#fff',
+        borderWidth: 2,
+        hoverOffset: 8
+      }]
     };
-  };
+  }, [processedData, xAxisColumn, yAxisColumns]);
 
-  // Chart types configuration
-  const chartTypes = [
-    { value: 'bar', label: 'Bar', icon: '📊', description: 'Compare values across categories' },
-    { value: 'line', label: 'Line', icon: '📈', description: 'Show trends over time' },
-    { value: 'pie', label: 'Pie', icon: '�', description: 'Show parts of a whole' },
-    { value: 'scatter', label: 'Scatter', icon: '✱', description: 'Show relationships between variables' },
-    { value: 'area', label: 'Area', icon: '▀', description: 'Show magnitude of change over time' }
-  ];
+  const getScatterChartData = useCallback(() => {
+    if (!processedData || !xAxisColumn || yAxisColumns.length === 0) return { datasets: [] };
+    
+    return {
+      datasets: yAxisColumns.map((col, idx) => ({
+        label: col,
+        data: processedData.map(item => ({
+          x: parseFloat(item[xAxisColumn]) || 0,
+          y: parseFloat(item[col]) || 0
+        })),
+        backgroundColor: COLORS[idx % COLORS.length],
+        borderColor: '#fff',
+        borderWidth: 1,
+        pointRadius: 6,
+        pointHoverRadius: 8
+      }))
+    };
+  }, [processedData, xAxisColumn, yAxisColumns]);
 
-  // Get icon for chart type
-  const getChartIcon = (type) => {
-    const chartType = chartTypes.find(ct => ct.value === type);
-    return chartType ? chartType.icon : '📊';
-  };
+  // Show loading state if data is being processed
+  if (isLoading) {
+    return (
+      <div className="loading-overlay">
+        <div className="loading-spinner"></div>
+        <p>Processing your data...</p>
+      </div>
+    );
+  }
 
-  // Effect to set initial data
-  useEffect(() => {
-    console.log('DataVisualization mounted or chartData changed:', { chartData });
-    try {
-      // Handle different data structures
-      if (!chartData) {
-        console.warn('No chartData provided');
-        setFilteredData([]);
-        return;
-      }
-
-      // If chartData has a data property (from UploadPage)
-      if (chartData.data && Array.isArray(chartData.data)) {
-        console.log('Setting filtered data with chartData.data:', chartData.data);
-        setFilteredData(chartData.data);
-        return;
-      }
-      
-      // If chartData is directly an array
-      if (Array.isArray(chartData)) {
-        if (chartData.length > 0) {
-          console.log('Setting filtered data with chartData array:', chartData);
-          setFilteredData(chartData);
-        } else {
-          console.warn('Empty chart data array received');
-          setFilteredData([]);
-        }
-        return;
-      }
-      
-      // If chartData is an object (but not an array)
-      if (typeof chartData === 'object' && chartData !== null) {
-        // Try to convert object to array of values
-        const dataArray = Object.values(chartData);
-        console.warn('Converted chartData object to array:', dataArray);
-        setFilteredData(dataArray);
-        return;
-      }
-      
-      // If we get here, the format is not supported
-      console.warn('Unsupported chartData format:', chartData);
-      setFilteredData([]);
-      
-    } catch (err) {
-      console.error('Error processing chart data:', err);
-      console.error('Error processing chart data:', err);
-      setFilteredData([]);
-    }
-  }, [chartData]);
-
-  if (!filteredData || !Array.isArray(filteredData) || filteredData.length === 0) {
-    console.log('No filtered data available, showing upload prompt', { filteredData, chartData });
+  if (!hasValidData) {
     return (
       <div className="no-data">
-        <p>No data available for visualization. Please upload a different file.</p>
-        <div style={{ marginTop: '20px', padding: '10px', background: '#2d2d2d', borderRadius: '4px' }}>
-          <p style={{ fontSize: '12px', color: '#aaa' }}>Debug Info:</p>
-          <pre style={{ fontSize: '10px', color: '#ddd', overflow: 'auto', maxHeight: '200px' }}>
-            Chart Data: {chartData && Array.isArray(chartData) 
-              ? JSON.stringify(chartData.slice(0, 2), null, 2) 
-              : JSON.stringify(chartData, null, 2)}
-          </pre>
-        </div>
-        <button onClick={handleBack} className="btn btn-outline" style={{ marginTop: '20px' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12"></line>
-            <polyline points="12 19 5 12 12 5"></polyline>
-          </svg>
-          Back to Upload
+        <h2>No Data Available</h2>
+        <p>Please upload a valid dataset to begin visualization.</p>
+        <button onClick={handleBack} className="btn-primary">
+          <FiChevronLeft /> Back to Upload
         </button>
       </div>
     );
   }
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <div className="header-content">
-          <div className="header-left">
-            <a href="/" className="logo">
-              <i className="fas fa-chart-line logo-icon"></i>
-              <h1>SenseSheet <span className="made-by">Made with ❤️ by Anand</span></h1>
-            </a>
-          </div>
-          <div className="header-actions">
-            <button className="export-btn" onClick={handleDownload}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style={{marginRight: '6px'}}>
-                <path d="M8.5 1.5A1.5 1.5 0 0 1 10 0h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h6c-.314.418-.5.937-.5 1.5v6h-2a.5.5 0 0 0-.354.854l2.5 2.5a.5.5 0 0 0 .708 0l2.5-2.5A.5.5 0 0 0 11 7.5H9v-6z"/>
-              </svg>
-              EXPORT
-            </button>
-            <button 
-              className="logout-btn" 
-              onClick={onLogout || (() => console.log('Logout'))}
-              title="Logout"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style={{marginRight: '6px'}}>
-                <path d="M7.5 1v7h1V1h-1z"/>
-                <path d="M3 8.812a4.999 4.999 0 0 1 2.578-4.375l-.485-.874A6 6 0 1 0 11 3.616l-.501.865A5 5 0 1 1 3 8.812z"/>
-              </svg>
-              LOGOUT
-            </button>
-          </div>
-        </div>
+    <>
+      <header className="dashboard-header">
+        <button className="export-btn" onClick={() => handleDownload()}>
+          <FiDownload /> Export Chart
+        </button>
+        <h1>SenseSheet</h1>
       </header>
-      
-      <div className="content-wrapper">
-        <div 
-          className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
-          onClick={() => setIsSidebarOpen(false)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Escape' && setIsSidebarOpen(false)}
-          aria-label="Close sidebar"
-        />
-        <div className={`main-content ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-          <button 
-            className="sidebar-toggle" 
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsSidebarOpen(!isSidebarOpen);
-            }}
-            aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-          >
-            {isSidebarOpen ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            )}
-          </button>
-          
-          <div className="chart-content">
-            <div className={`chart-container ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-              <div className="chart-options">
-                {selectedChart === 'bar' && <Bar ref={chartRef} data={generateChartData()} options={commonOptions} />}
-                {selectedChart === 'line' && <Line ref={chartRef} data={generateChartData()} options={commonOptions} />}
-                {selectedChart === 'pie' && (
-                  <Pie 
-                    ref={chartRef} 
-                    data={generateChartData()} 
-                    options={{
-                      ...pieChartOptions,
-                      plugins: {
-                        ...pieChartOptions.plugins,
-                        title: {
-                          ...pieChartOptions.plugins.title,
-                          text: chartTitle || 'Pie Chart Distribution'
-                        }
-                      }
-                    }} 
-                  />
-                )}
-                {selectedChart === 'scatter' && (
-                  <Scatter 
-                    ref={chartRef}
-                    data={generateChartData()}
-                    options={{
-                      ...commonOptions,
-                      scales: {
-                        ...commonOptions.scales,
-                        x: {
-                          ...commonOptions.scales.x,
-                          type: 'linear'
-                        }
-                      }
-                    }}
-                  />
-                )}
-                {selectedChart === 'area' && (
-                  <Line
-                    ref={chartRef}
-                    data={generateChartData()}
-                    options={{
-                      ...commonOptions,
-                      elements: {
-                        line: {
-                          fill: true,
-                          tension: 0.4
-                        }
-                      }
-                    }}
-                  />
-                )}
-              </div>
+      <div className="dashboard-container">
+        <div className="dashboard-layout">
+        <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-section">
+            <h3>Chart Type</h3>
+            <div className="form-group">
+              <select
+                value={selectedChart}
+                onChange={(e) => setSelectedChart(e.target.value)}
+                className="select-input"
+              >
+                <option value="bar">Bar Chart</option>
+                <option value="line">Line Chart</option>
+                <option value="pie">Pie Chart</option>
+                <option value="scatter">Scatter Plot</option>
+              </select>
             </div>
-            
-            <div className="data-container">
-              <div className="data-preview">
+          </div>
+
+          <div className="sidebar-section">
+            <h3>Axes Configuration</h3>
+            <div className="form-group">
+              <label>X-Axis</label>
+              <select
+                value={xAxisColumn}
+                onChange={(e) => setXAxisColumn(e.target.value)}
+                className="select-input"
+              >
+                {chartData?.headers?.map((header, idx) => (
+                  <option key={`x-${idx}`} value={header}>
+                    {header}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={xAxisLabel}
+                onChange={(e) => setXAxisLabel(e.target.value)}
+                placeholder="X-axis label"
+                className="text-input"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Y-Axis</label>
+              <select
+                multiple
+                value={yAxisColumns}
+                onChange={(e) => {
+                  const selected = Array.from(e.target.selectedOptions, option => option.value);
+                  setYAxisColumns(selected);
+                }}
+                className="select-input"
+                size="4"
+              >
+                {chartData?.headers?.filter(h => h !== xAxisColumn).map((header, idx) => (
+                  <option key={`y-${idx}`} value={header}>
+                    {header}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={yAxisLabel}
+                onChange={(e) => setYAxisLabel(e.target.value)}
+                placeholder="Y-axis label"
+                className="text-input"
+              />
+            </div>
+          </div>
+
+          <div className="sidebar-section">
+            <h3>Display Options</h3>
+            <div className="form-group">
+              <label>Chart Title</label>
+              <input
+                type="text"
+                value={chartTitle}
+                onChange={(e) => setChartTitle(e.target.value)}
+                placeholder="Enter chart title"
+                className="text-input"
+              />
+            </div>
+            <button className="btn btn-primary" onClick={handleDownload}>
+              <FiDownload /> Export Chart
+            </button>
+          </div>
+        </aside>
+
+        <div className="main-content">
+          <div className="chart-area">
+            <h2>{chartTitle}</h2>
+            <div className="chart-wrapper">
+              {processedData && xAxisColumn && yAxisColumns.length > 0 ? (
+                <>
+                  {selectedChart === 'bar' && (
+                    <Bar 
+                      ref={chartRef} 
+                      data={getBarChartData()} 
+                      options={{
+                        ...chartOptions,
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        animation: { duration: 0 },
+                        layout: { padding: 20 },
+                        plugins: {
+                          legend: { position: 'top', labels: { padding: 20 } }
+                        }
+                      }}
+                    />
+                  )}
+                  {selectedChart === 'line' && (
+                    <Line 
+                      ref={chartRef} 
+                      data={getLineChartData()} 
+                      options={{
+                        ...chartOptions,
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        animation: { duration: 0 },
+                        layout: { padding: 20 },
+                        plugins: {
+                          legend: { position: 'top', labels: { padding: 20 } }
+                        }
+                      }}
+                    />
+                  )}
+                  {selectedChart === 'pie' && (
+                    <Pie 
+                      ref={chartRef} 
+                      data={getPieChartData()} 
+                      options={{
+                        ...chartOptions,
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        animation: { duration: 0 },
+                        layout: { padding: 20 },
+                        plugins: {
+                          legend: { position: 'right', labels: { padding: 20 } }
+                        }
+                      }}
+                    />
+                  )}
+                  {selectedChart === 'scatter' && (
+                    <Scatter 
+                      ref={chartRef} 
+                      data={getScatterChartData()} 
+                      options={{
+                        ...chartOptions,
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        animation: { duration: 0 },
+                        layout: { padding: 20 },
+                        plugins: {
+                          legend: { position: 'top', labels: { padding: 20 } }
+                        }
+                      }}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="no-data-message">
+                  <p>Please select X and Y axes to display the chart</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="data-overview">
+            <div className="product-overview">
+              <h3>Data Overview</h3>
+              <div className="overview-stats">
+                <div className="stat-card">
+                  <span className="stat-value">{processedData?.length || 0}</span>
+                  <span className="stat-label">Total Records</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-value">{chartData?.headers?.length || 0}</span>
+                  <span className="stat-label">Columns</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-value">{yAxisColumns.length}</span>
+                  <span className="stat-label">Metrics</span>
+                </div>
+              </div>
+              {xAxisColumn && (
+                <div className="dimension-info">
+                  <h4>Current Dimensions</h4>
+                  <p>X-Axis: <strong>{xAxisLabel || xAxisColumn}</strong></p>
+                  <p>Y-Axis: <strong>{yAxisColumns.length > 0 ? yAxisColumns.join(', ') : 'None selected'}</strong></p>
+                </div>
+              )}
+            </div>
+
+            <div className="data-preview">
+              <div className="preview-header">
                 <h3>Data Preview</h3>
-                <div className="table-container">
-                  <table>
-                    <thead>
-                      <tr>
-                        {Object.keys(filteredData[0] || {}).map((key) => (
-                          <th key={key}>{key}</th>
+                <span className="badge">{previewData.length} of {processedData?.length || 0} rows</span>
+              </div>
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      {chartData?.headers?.map((header, idx) => (
+                        <th key={idx}>{header}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewData.map((row, rowIdx) => (
+                      <tr key={rowIdx}>
+                        {chartData?.headers?.map((header, colIdx) => (
+                          <td key={`${rowIdx}-${colIdx}`}>
+                            {typeof row[header] === 'number' 
+                              ? row[header].toLocaleString() 
+                              : row[header] || '-'}
+                          </td>
                         ))}
                       </tr>
-                    </thead>
-                    <tbody>
-                      {filteredData.slice(0, 5).map((row, index) => (
-                        <tr key={index}>
-                          {Object.values(row).map((value, i) => (
-                            <td key={i}>{value !== null && value !== undefined ? String(value) : '-'}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {filteredData.length > 5 && (
-                  <p className="text-muted">Showing 5 of {filteredData.length} rows</p>
-                )}
-              </div>
-              
-              <div className="axes-controls">
-                <h3>Axes Configuration</h3>
-                <div className="form-group">
-                  <label>X-Axis</label>
-                  <select 
-                    className="form-control"
-                    value={xAxis}
-                    onChange={(e) => setXAxis(e.target.value)}
-                  >
-                    {filteredData[0] && Object.keys(filteredData[0]).map((key) => (
-                      <option key={`x-${key}`} value={key}>{key}</option>
                     ))}
-                  </select>
-                </div>
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                  <label>Y-Axis</label>
-                  <select 
-                    className="form-control"
-                    value={yAxis}
-                    onChange={(e) => setYAxis(e.target.value)}
-                  >
-                    {filteredData[0] && Object.keys(filteredData[0]).map((key) => (
-                      <option key={`y-${key}`} value={key}>{key}</option>
-                    ))}
-                  </select>
-                </div>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         </div>
-        
-        <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
-          <div className="sidebar-content">
-            <h2>{chartTitle || 'Data Visualization'}</h2>
-            
-            <div className="sidebar-section">
-              <h3>Chart Type</h3>
-              <div className="chart-type-selector">
-                {chartTypes.map((type) => (
-                  <button
-                    key={type.value}
-                    className={`chart-type-btn ${selectedChart === type.value ? 'active' : ''}`}
-                    onClick={() => setSelectedChart(type.value)}
-                    title={type.description}
-                  >
-                    <div className="chart-icon">
-                      {getChartIcon(type.value)}
-                    </div>
-                    <span>{type.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <div className="sidebar-section">
-              <h3>Chart Options</h3>
-              <div className="form-group">
-                <label htmlFor="chartTitle">Chart Title</label>
-                <input
-                  type="text"
-                  id="chartTitle"
-                  value={chartTitle}
-                  onChange={(e) => setChartTitle(e.target.value)}
-                  placeholder="Enter chart title"
-                  className="form-control"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="xAxisLabel">X-Axis Label</label>
-                <input
-                  type="text"
-                  id="xAxisLabel"
-                  value={xAxisLabel}
-                  onChange={(e) => setXAxisLabel(e.target.value)}
-                  placeholder="X-axis label"
-                  className="form-control"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="yAxisLabel">Y-Axis Label</label>
-                <input
-                  type="text"
-                  id="yAxisLabel"
-                  value={yAxisLabel}
-                  onChange={(e) => setYAxisLabel(e.target.value)}
-                  placeholder="Y-axis label"
-                  className="form-control"
-                />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

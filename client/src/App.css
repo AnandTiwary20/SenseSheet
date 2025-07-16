@@ -48,6 +48,44 @@
 
 
   --spacing-xxs: 0.25rem;
+
+/* Free Test Button Styles */
+.free-test-button {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: linear-gradient(135deg, #6a0dad, #9d38d3);
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.free-test-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #800080, #a848a8);
+}
+
+.free-test-button::before {
+  content: '🚀';
+  font-size: 16px;
+}
+
+.free-test-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(106, 13, 218, 0.3);
+}
   --spacing-xs: 0.5rem;
   --spacing-sm: 0.75rem;
   --spacing-md: 1rem;

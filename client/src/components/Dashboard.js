@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FaChartBar, FaChartLine, FaChartPie, FaFileUpload, FaSignOutAlt } from 'react-icons/fa';
@@ -7,6 +7,23 @@ import './Dashboard.css';
 const Dashboard = () => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const offset = window.scrollY;
+      if (offset > 10) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -46,7 +63,7 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard">
-      <header className="dashboard-header">
+      <header className={`dashboard-header ${isScrolled ? 'scrolled' : ''}`}>
         <div className="dashboard-header-content">
           <div>
             <h1>Welcome back, {currentUser?.name || 'User'}!</h1>

@@ -4,12 +4,15 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const { Sequelize, DataTypes } = require('sequelize');
+const { OAuth2Client } = require('google-auth-library');
+const bcrypt = require('bcryptjs');
+require('dotenv').config();
 
 const app = express();
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: ['http://localhost:3000', 'http://localhost:5000'],
   credentials: true
 }));
 app.use(bodyParser.json());
@@ -40,11 +43,68 @@ async function testConnection() {
 
 testConnection();
 
-// Import models
-const User = require('./models/User');
+// Initialize models
+const User = sequelize.define('User', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+    validate: {
+      isEmail: true
+    }
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  googleId: {
+    type: DataTypes.STRING,
+    unique: true
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  }
+}, {
+  hooks: {
+    beforeCreate: async (user) => {
+      if (user.password) {
+        user.password = await bcrypt.hash(user.password, 10);
+      }
+    },
+    beforeUpdate: async (user) => {
+      if (user.changed('password')) {
+        user.password = await bcrypt.hash(user.password, 10);
+      }
+    }
+  },
+  methods: {
+    comparePassword: async function(candidatePassword) {
+      return bcrypt.compare(candidatePassword, this.password);
+    }
+  }
+});
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_development';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+// Initialize Google OAuth2 client
+const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, 'http://localhost:3000/auth/google/callback');
 
 // Create test user if not exists
 async function createTestUser() {
@@ -69,6 +129,51 @@ async function createTestUser() {
     console.error('❌ Error creating test user:', error);
   }
 }
+
+// Google OAuth Routes
+app.get('/auth/google', (req, res) => {
+  const authUrl = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: ['https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile'],
+    redirect_uri: 'http://localhost:3000/auth/google/callback'
+  });
+  res.redirect(authUrl);
+});
+
+app.post('/auth/google/callback', async (req, res) => {
+  try {
+    const { token: googleToken } = req.body;
+    
+    // Verify the Google token
+    const ticket = await oauth2Client.verifyIdToken({
+      idToken: googleToken,
+      audience: GOOGLE_CLIENT_ID
+    });
+    
+    const payload = ticket.getPayload();
+    const { email, name, sub } = payload;
+
+    // Find or create user
+    const [user, created] = await User.findOrCreate({
+      where: { email },
+      defaults: {
+        name,
+        email,
+        googleId: sub,
+      },
+    });
+
+    // Generate JWT token
+    const authJwt = jwt.sign({ id: user.id }, JWT_SECRET, {
+      expiresIn: '7d'
+    });
+
+    res.json({ token: authJwt });
+  } catch (error) {
+    console.error('Google OAuth error:', error);
+    res.redirect('http://localhost:3000/login?error=auth_failed');
+  }
+});
 
 // Auth Routes
 // Register
@@ -181,7 +286,6 @@ app.get('/api/me', async (req, res) => {
 });
 
 // Start the server
-const port = process.env.PORT || 5000;
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+app.listen(3000, () => {
+  console.log('Server is running on port 3000');
 });

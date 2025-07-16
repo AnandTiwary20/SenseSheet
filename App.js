@@ -1,36 +1,36 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import Dropzone from 'react-dropzone';
 import Plot from 'react-plotly.js';
 import './App.css';
 import axios from 'axios';
+import UploadPage from './components/UploadPage';
 
 function App() {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [filteredData, setFilteredData] = useState(null); // State to store the filtered data
   const [selectedChart, setSelectedChart] = useState('bar'); // State to track selected chart type
 
-  const handleFileUpload = async (acceptedFiles) => {
-    const file = acceptedFiles[0];
-    setUploadedFile(file);
+  const handleFileUpload = async (data) => {
+    console.log('Received data in App.js:', data);
+    
+    if (!data || !data.data) {
+      console.error('Invalid data received:', data);
+      throw new Error('Invalid data format received');
+    }
 
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const firstSheet = workbook.SheetNames[0];
-      const excelData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
-
-      // Remove columns with all null values
-      const filteredData = excelData.filter((item) => !Object.values(item).every((value) => value === null));
-
+    try {
       // Set the filtered data to the state
-      setFilteredData(filteredData);
+      setFilteredData(data);
+      console.log('Filtered data set in state:', data);
 
       // Save the filtered data to the backend
-      saveDataToBackend(filteredData);
-    };
-    reader.readAsArrayBuffer(file);
+      await saveDataToBackend(data.data);
+      console.log('Data saved to backend');
+    } catch (error) {
+      console.error('Error processing Excel file:', error);
+      console.error('Error stack:', error.stack);
+      alert(`Error processing Excel file: ${error.message}`);
+    }
   };
 
   const saveDataToBackend = async (data) => {
@@ -152,27 +152,7 @@ function App() {
       <main className="main-content">
         <h1 className="title">Get It Visualized</h1>
         <p className="subtitle">Easily transform your Excel data into beautiful, interactive visualizations</p>
-        
-        <Dropzone onDrop={handleFileUpload}>
-          {({ getRootProps, getInputProps, isDragActive }) => (
-            <div 
-              {...getRootProps()} 
-              className={`dropzone fade-in ${isDragActive ? 'active' : ''}`}
-            >
-              <input {...getInputProps()} />
-              <div className="dropzone-content">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-                <p>{isDragActive ? 'Drop your file here' : 'Drag & drop an Excel file here, or click to browse'}</p>
-                <p className="file-hint">Supports .xlsx, .xls, .csv files</p>
-                {uploadedFile && <p className="file-info">Uploaded: {uploadedFile.name}</p>}
-              </div>
-            </div>
-          )}
-        </Dropzone>
+        <UploadPage onFileUpload={handleFileUpload} />
         
         {filteredData && (
           <div className="chart-selector fade-in">

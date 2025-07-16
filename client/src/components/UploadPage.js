@@ -8,18 +8,29 @@ const UploadPage = ({ onFileUpload }) => {
   const navigate = useNavigate();
 
   const handleFileUpload = async (acceptedFiles) => {
-    if (!acceptedFiles || !acceptedFiles[0]) return;
+    if (!acceptedFiles || !acceptedFiles[0]) {
+      console.log('No file selected');
+      return;
+    }
     
     setIsUploading(true);
     const file = acceptedFiles[0];
     
     try {
+      console.log('Starting file processing for:', file.name);
       const data = await readFile(file);
+      console.log('Data processed in UploadPage:', data);
+      
+      if (!onFileUpload) {
+        console.error('onFileUpload prop is not a function');
+        throw new Error('onFileUpload prop is not a function');
+      }
+      
       onFileUpload(data);
-      navigate('/visualize');
     } catch (error) {
-      console.error('Error processing file:', error);
-      alert('Error processing file. Please try again.');
+      console.error('Detailed error processing file:', error);
+      console.error('Error stack:', error.stack);
+      alert(`Error processing file: ${error.message}`);
     } finally {
       setIsUploading(false);
     }
@@ -40,46 +51,61 @@ const UploadPage = ({ onFileUpload }) => {
           
           const firstSheet = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheet];
+          
+          // Get data in JSON format with headers
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
           
           if (!jsonData.length) {
             throw new Error('No data found in the sheet');
           }
           
-          // Get headers (first row)
+          // Get headers from first row
           const headers = jsonData[0];
           
-          // Process data rows
-          const rows = jsonData.slice(1).map(row => {
+          // Get data rows (excluding header row)
+          const dataRows = jsonData.slice(1);
+          
+          // Convert to object format
+          const processedData = dataRows.map(row => {
             const rowData = {};
             headers.forEach((header, index) => {
-              rowData[header] = row[index] !== undefined ? row[index] : null;
+              // Convert numeric strings to numbers
+              const value = row[index];
+              rowData[header] = typeof value === 'string' && !isNaN(value) ? parseFloat(value) : value;
             });
             return rowData;
           });
           
-          // Filter out empty rows
-          const filteredData = rows.filter(row => 
+          // Filter out completely empty rows
+          const filteredData = processedData.filter(row => 
             Object.values(row).some(value => value !== null && value !== undefined && value !== '')
           );
           
           if (filteredData.length === 0) {
             throw new Error('No valid data found in the file');
           }
-          
+
+          // Debug logging
+          console.log('Headers:', headers);
+          console.log('Data rows:', dataRows);
+          console.log('Processed data:', filteredData);
+
+          // Ensure consistent data structure
           resolve({
             data: filteredData,
-            headers,
+            headers: headers.map(header => header.toString()), // Convert headers to strings
             fileName: file.name
           });
           
         } catch (error) {
-          reject(error);
+          console.error('Error in readFile:', error);
+          reject(new Error('Error processing file: ' + error.message));
         }
       };
       
       reader.onerror = () => {
-        reject(new Error('Error reading file'));
+        console.error('File reading error');
+        reject(new Error('Error reading file. Please make sure it is a valid Excel file.'));
       };
       
       reader.readAsArrayBuffer(file);

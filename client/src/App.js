@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard';
 import DataVisualization from './components/DataVisualization';
 import UploadPage from './components/UploadPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import GoogleAuth from './components/GoogleAuth';
 import { useAuth } from './context/AuthContext';
 
 function App() {
@@ -14,83 +15,111 @@ function App() {
   const [chartData, setChartData] = useState(null);
   const navigate = useNavigate();
 
-  // Check if user is already logged in
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Verify token with backend
-      const verifyToken = async () => {
-        try {
-          const response = await axios.get('http://localhost:5000/api/me', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          setUser(response.data);
-          setIsAuthenticated(true);
-        } catch (error) {
-          console.error('Token verification failed:', error);
-          localStorage.removeItem('token');
-        }
-      };
-      verifyToken();
-    }
-  }, [setUser, setIsAuthenticated]);
-
   const handleFileUpload = (data) => {
-    console.log('File upload data received in App.js:', data);
-    setChartData(data);
-    console.log('Chart data set, navigating to /visualize');
-    navigate('/visualize');
-  };
+    // Process the Excel data directly in the frontend
+    try {
+      if (!data || !data.data || !data.headers) {
+        throw new Error('Invalid data format. Expected data object with data and headers properties');
+      }
 
-  if (loading) {
-    return <div className="loading">Loading...</div>;
-  }
+      // Validate headers
+      if (!Array.isArray(data.headers) || data.headers.length === 0) {
+        throw new Error('No valid headers found in the file');
+      }
+
+      // Validate data rows
+      if (!Array.isArray(data.data) || data.data.length === 0) {
+        throw new Error('No data rows found in the file');
+      }
+
+      // Debug logging
+      console.log('Received data:', {
+        headers: data.headers,
+        firstRow: data.data[0],
+        rowCount: data.data.length
+      });
+
+      // Store the data
+      setChartData(data);
+      
+      // Always navigate to visualize when data is uploaded
+      navigate('/visualize');
+    } catch (error) {
+      console.error('Error in handleFileUpload:', error);
+      alert(`Error processing file: ${error.message}. Please make sure your Excel file has both headers and data rows.`);
+    }
+  };
 
   const handleLogin = (userData) => {
     setUser(userData);
     setIsAuthenticated(true);
-  };
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setChartData(null);
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
+    // Check if there was pending data before login
+    const pendingData = localStorage.getItem('pendingData');
+    if (pendingData) {
+      const data = JSON.parse(pendingData);
+      setChartData(data);
+      localStorage.removeItem('pendingData');
+      navigate('/visualize');
+    } else {
+      navigate('/dashboard');
     }
   };
+
+
 
   return (
     <div className="app">
       <Routes>
         <Route path="/login" element={
-          !isAuthenticated ? 
-            <Login onLogin={handleLogin} /> : 
+          !isAuthenticated ? (
+            <div className="login-container">
+              <Login onLogin={handleLogin} />
+              <GoogleAuth />
+            </div>
+          ) : (
             <Navigate to="/dashboard" replace />
+          )
         } />
         <Route path="/" element={
-          <Navigate to="/dashboard" replace />
+          isAuthenticated ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Navigate to="/login" replace />
+          )
         } />
-        <Route path="/dashboard" element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <Dashboard user={currentUser} onLogout={handleLogout} />
-          </ProtectedRoute>
-        } />
-        <Route path="/upload" element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <UploadPage onFileUpload={handleFileUpload} onLogout={handleLogout} />
-          </ProtectedRoute>
-        } />
-        <Route path="/visualize" element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <DataVisualization 
-              chartData={chartData} 
-              onBack={() => navigate('/upload')} 
-              onLogout={handleLogout} 
-            />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/visualize"
+          element={
+            <ProtectedRoute>
+              <DataVisualization chartData={chartData} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/upload"
+          element={
+            <ProtectedRoute>
+              <UploadPage onFileUpload={handleFileUpload} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/upload/bypass"
+          element={
+            <div>
+              <UploadPage onFileUpload={handleFileUpload} />
+              <p>Upload files without authentication</p>
+            </div>
+          }
+        />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </div>
