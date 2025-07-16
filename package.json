@@ -2,6 +2,7 @@
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "dotenv": "^17.2.0",
+    "express": "^5.1.0",
     "google-auth-library": "^10.1.0",
     "mongodb": "^6.17.0",
     "passport": "^0.7.0",
@@ -10,6 +11,27 @@
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
+    "nodemon": "^3.0.2",
     "stylelint": "^16.21.1"
-  }
+  },
+  "name": "sensesheet-backend",
+  "version": "1.0.0",
+  "description": "Backend for SenseSheet - Data Visualization Tool",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "server": "nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AnandTiwary20/SenseSheet.git"
+  },
+  "keywords": ["data", "visualization", "excel", "dashboard"],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AnandTiwary20/SenseSheet/issues"
+  },
+  "homepage": "https://github.com/AnandTiwary20/SenseSheet#readme"
 }
