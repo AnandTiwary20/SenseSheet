@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "google-auth-library": "^10.1.0",
@@ -27,7 +28,12 @@
     "type": "git",
     "url": "git+https://github.com/AnandTiwary20/SenseSheet.git"
   },
-  "keywords": ["data", "visualization", "excel", "dashboard"],
+  "keywords": [
+    "data",
+    "visualization",
+    "excel",
+    "dashboard"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
