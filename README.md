@@ -1,6 +1,6 @@
 # SenseSheet
 
-# ** Since the Deployment is Under Maintainance I provide You a QuicK Video OF THE PROJECT **
+# ** Since the Deployment is Under Maintenance I provide You a QuicK Video OF THE PROJECT **
 
 Live VIDEO -https://drive.google.com/file/d/1GadSvCyGqg6jVizevbB2diUadvBq5H4N/view?usp=sharing 
 
