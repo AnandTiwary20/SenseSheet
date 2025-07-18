@@ -67,7 +67,7 @@ The goal is to offer a no-code, visual analytics platform where users can intera
 
 
 
-Ask ChatGPT
+
 
 
 
