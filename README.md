@@ -1,4 +1,12 @@
 # SenseSheet
+
+# ** Since the Deployment is Under Maintainance I provide You a QuicK Video OF THE PROJECT **
+
+Live VIDEO -https://drive.google.com/file/d/1GadSvCyGqg6jVizevbB2diUadvBq5H4N/view?usp=sharing 
+
+Kindly Check and DROP REVIEW .
+
+
 SenseSheet  is a full-stack web application developed using the MERN stack (MongoDB, Express.js, React.js, Node.js), enhanced with SQLite, and built with a combination of JavaScript, HTML, CSS, and modern data visualization libraries like Chart.js and Plotly.js. The project provides users with a seamless way to upload Excel files and transform raw data into insightful, interactive visualizations.
 
 🔧 Tech Stack
