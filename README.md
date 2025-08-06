@@ -4,6 +4,9 @@
 
 Live VIDEO -https://drive.google.com/file/d/1GadSvCyGqg6jVizevbB2diUadvBq5H4N/view?usp=sharing 
 
+Alternate Website Created - https://excelinsights.netlify.app/
+(Until the Maintenance)
+
 Kindly Check and DROP REVIEW .
 
 
